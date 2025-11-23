@@ -42,8 +42,8 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ videoUrl, result, co
 
   const seekToPhase = (time: number) => {
     if (videoRef.current) {
+      videoRef.current.pause();
       videoRef.current.currentTime = time;
-      videoRef.current.play();
     }
   };
 
