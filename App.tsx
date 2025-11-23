@@ -74,11 +74,11 @@ export default function App() {
         {appState === AppStateEnum.UPLOAD && (
           <div className="flex flex-col items-center justify-center min-h-screen p-4">
              <div className="mb-12 text-center">
-                <div className="inline-block p-4 rounded-full bg-equi-navy/50 mb-6 ring-1 ring-equi-slate/20">
-                  <span className="text-4xl">🏇</span>
+                <div className="inline-block p-2 rounded-full bg-equi-navy/50 mb-6 ring-1 ring-equi-slate/20 overflow-hidden">
+                  <img src="/assets/EriHorse.png" alt="Horse logo" className="w-16 h-16 object-cover rounded-full" />
                 </div>
                 <h1 className="text-5xl font-extrabold text-white tracking-tight mb-2">
-                  Equi<span className="text-equi-gold">Analyze</span> Pro
+                  Patrick's Equi<span className="text-equi-gold">Analyze</span> Pro
                 </h1>
                 <p className="text-equi-slate text-lg max-w-md mx-auto">
                   Master your ride with AI-powered biomechanics analysis and world-class comparisons.
