@@ -73,15 +73,15 @@ export default function App() {
       <div className="relative z-10 h-full">
         {appState === AppStateEnum.UPLOAD && (
           <div className="flex flex-col items-center justify-center min-h-screen p-4">
-             <div className="mb-12 text-center">
-                <div className="inline-block p-2 rounded-full bg-equi-navy/50 mb-6 ring-1 ring-equi-slate/20 overflow-hidden">
-                  <img src="/EriHorse.png" alt="Horse logo" className="w-16 h-16 object-cover rounded-full" />
+             <div className="mb-6 text-center">
+                <div className="inline-block p-3 rounded-full bg-equi-navy/50 mb-4 ring-1 ring-equi-slate/20 overflow-hidden">
+                  <img src="/EriHorse.png" alt="Horse logo" className="w-32 h-32 object-cover rounded-full" />
                 </div>
-                <h1 className="text-5xl font-extrabold text-white tracking-tight mb-2">
+                <h1 className="text-4xl font-extrabold text-white tracking-tight mb-1">
                   Patrick's Equi<span className="text-equi-gold">Analyze</span> Pro
                 </h1>
-                <p className="text-equi-slate text-lg max-w-md mx-auto">
-                  Master your ride with AI-powered biomechanics analysis and world-class comparisons.
+                <p className="text-equi-slate text-base max-w-md mx-auto">
+                  Master your ride with AI-powered biomechanics analysis.
                 </p>
              </div>
              <VideoUploader onFileSelect={handleFileSelect} />
