@@ -3,9 +3,16 @@ import type { AnalysisResult, AnalysisPhase, ComparisonImage } from "../types";
 
 const GEMINI_MODEL_ID = "gemini-2.5-flash";
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY ?? import.meta.env.API_KEY;
+const apiKey =
+  import.meta.env.VITE_GEMINI_API_KEY ||
+  import.meta.env.API_KEY ||
+  // @ts-expect-error - injected by vite.config.ts
+  process.env.GEMINI_API_KEY ||
+  // @ts-expect-error - injected by vite.config.ts
+  process.env.API_KEY;
+
 if (!apiKey) {
-  throw new Error("Missing Gemini API key. Set VITE_GEMINI_API_KEY in .env.local");
+  throw new Error("Missing Gemini API key. Set VITE_GEMINI_API_KEY in environment");
 }
 const ai = new GoogleGenAI({ apiKey });
 
