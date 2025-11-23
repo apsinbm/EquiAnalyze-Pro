@@ -40,10 +40,11 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ videoUrl, result, co
     };
   }, [result.phases]);
 
-  const seekToPhase = (time: number) => {
+  const seekToPhase = (time: number, index: number) => {
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.currentTime = time;
+      setActivePhaseIndex(index);
     }
   };
 
@@ -93,7 +94,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({ videoUrl, result, co
             {result.phases.map((phase, idx) => (
               <button
                 key={idx}
-                onClick={() => seekToPhase(phase.startTime)}
+                onClick={() => seekToPhase(phase.startTime, idx)}
                 className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   idx === activePhaseIndex 
                     ? 'bg-equi-gold text-equi-navy shadow-lg shadow-equi-gold/20 scale-105' 
