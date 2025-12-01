@@ -13,6 +13,7 @@ const MAX_FILE_SIZE_MB = 100;
 const MAX_DURATION_SECONDS = 300; // 5 minutes
 
 export const VideoInput: React.FC<VideoInputProps> = ({ onFileReady }) => {
+  const isYouTubeEnabled = process.env.NEXT_PUBLIC_ENABLE_YOUTUBE === 'true';
   const [mode, setMode] = useState<InputMode>('upload');
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,31 +132,33 @@ export const VideoInput: React.FC<VideoInputProps> = ({ onFileReady }) => {
         </div>
       </div>
 
-      {/* Tab selector */}
-      <div className="flex justify-center mb-6">
-        <div className="inline-flex bg-equi-navy/50 rounded-lg p-1">
-          <button
-            onClick={() => { setMode('upload'); setError(null); }}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-              mode === 'upload'
-                ? 'bg-equi-gold text-equi-navy'
-                : 'text-equi-slate hover:text-white'
-            }`}
-          >
-            Upload File
-          </button>
-          <button
-            onClick={() => { setMode('youtube'); setError(null); }}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-              mode === 'youtube'
-                ? 'bg-equi-gold text-equi-navy'
-                : 'text-equi-slate hover:text-white'
-            }`}
-          >
-            YouTube URL
-          </button>
+      {/* Tab selector - only show if YouTube is enabled */}
+      {isYouTubeEnabled && (
+        <div className="flex justify-center mb-6">
+          <div className="inline-flex bg-equi-navy/50 rounded-lg p-1">
+            <button
+              onClick={() => { setMode('upload'); setError(null); }}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                mode === 'upload'
+                  ? 'bg-equi-gold text-equi-navy'
+                  : 'text-equi-slate hover:text-white'
+              }`}
+            >
+              Upload File
+            </button>
+            <button
+              onClick={() => { setMode('youtube'); setError(null); }}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                mode === 'youtube'
+                  ? 'bg-equi-gold text-equi-navy'
+                  : 'text-equi-slate hover:text-white'
+              }`}
+            >
+              YouTube URL
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* File Upload Mode */}
       {mode === 'upload' && (
@@ -185,12 +188,12 @@ export const VideoInput: React.FC<VideoInputProps> = ({ onFileReady }) => {
               <p className="text-sm text-equi-slate mt-1">or click to browse (MP4, MOV, WebM)</p>
             </div>
           </div>
-          <p className="mt-3 text-xs text-equi-slate/60">Max: 100MB, 5 minutes (videos over 720p will be compressed)</p>
+          <p className="mt-3 text-xs text-equi-slate/60">Videos over 720p will be automatically compressed</p>
         </>
       )}
 
-      {/* YouTube URL Mode */}
-      {mode === 'youtube' && (
+      {/* YouTube URL Mode - only show if enabled */}
+      {mode === 'youtube' && isYouTubeEnabled && (
         <div className="space-y-4">
           <div className="relative">
             <input
