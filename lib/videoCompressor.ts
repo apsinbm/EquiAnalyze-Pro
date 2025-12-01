@@ -1,5 +1,5 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { fetchFile } from '@ffmpeg/util';
 
 type ProgressCallback = (progress: CompressionProgress) => void;
 
@@ -67,12 +67,12 @@ const loadFFmpeg = async (onProgress: ProgressCallback): Promise<FFmpeg> => {
     message: 'Loading video processor...',
   });
 
-  const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm';
+  const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd';
 
   try {
     await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      coreURL: `${baseURL}/ffmpeg-core.js`,
+      wasmURL: `${baseURL}/ffmpeg-core.wasm`,
     });
   } catch (err) {
     console.error('FFmpeg load error:', err);
