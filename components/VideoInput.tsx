@@ -188,7 +188,7 @@ export const VideoInput: React.FC<VideoInputProps> = ({ onFileReady }) => {
               <p className="text-sm text-equi-slate mt-1">or click to browse (MP4, MOV, WebM)</p>
             </div>
           </div>
-          <p className="mt-3 text-xs text-equi-slate/60">Videos over 720p will be automatically compressed</p>
+          <p className="mt-3 text-xs text-equi-slate/60">Videos will be compressed to 480p for fast analysis</p>
         </>
       )}
 

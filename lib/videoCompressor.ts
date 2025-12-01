@@ -9,8 +9,8 @@ export type CompressionProgress = {
   message: string;
 };
 
-const MAX_HEIGHT = 720;
-const MAX_FILE_SIZE_MB = 20;
+const MAX_HEIGHT = 480;
+const MAX_FILE_SIZE_MB = 3; // Keep under Vercel's 4.5MB limit after base64 encoding
 
 let ffmpeg: FFmpeg | null = null;
 
@@ -145,7 +145,7 @@ export const compressVideo = async (
     '-i',
     inputName,
     '-vf',
-    'scale=-2:720',
+    'scale=-2:480',
     '-c:v',
     'libx264',
     '-preset',
