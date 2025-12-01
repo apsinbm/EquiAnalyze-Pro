@@ -1,108 +1,107 @@
 import type { AnalysisResult } from '@/types';
 
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-
 type UploadProgressCallback = (stage: string, progress: number) => void;
+
+const CHUNK_SIZE = 3 * 1024 * 1024; // 3MB chunks (under Vercel's 4.5MB limit)
 
 export const uploadToGemini = async (
   file: File,
   onProgress?: UploadProgressCallback
 ): Promise<{ fileUri: string; mimeType: string }> => {
-  if (!GEMINI_API_KEY) {
-    throw new Error('Gemini API key not configured');
-  }
+  onProgress?.('Starting upload...', 5);
 
-  onProgress?.('Starting upload...', 10);
-
-  // Step 1: Start resumable upload
-  const startResponse = await fetch(
-    `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${GEMINI_API_KEY}`,
-    {
-      method: 'POST',
-      headers: {
-        'X-Goog-Upload-Protocol': 'resumable',
-        'X-Goog-Upload-Command': 'start',
-        'X-Goog-Upload-Header-Content-Length': file.size.toString(),
-        'X-Goog-Upload-Header-Content-Type': file.type,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        file: {
-          display_name: file.name,
-        },
-      }),
-    }
-  );
-
-  if (!startResponse.ok) {
-    const errorText = await startResponse.text();
-    console.error('Gemini upload start error:', startResponse.status, errorText);
-    throw new Error(`Failed to start upload: ${startResponse.status}`);
-  }
-
-  const uploadUrl = startResponse.headers.get('X-Goog-Upload-URL');
-  if (!uploadUrl) {
-    throw new Error('No upload URL returned from Gemini');
-  }
-
-  onProgress?.('Uploading video...', 30);
-
-  // Step 2: Upload the file data
-  const fileBuffer = await file.arrayBuffer();
-  const uploadResponse = await fetch(uploadUrl, {
+  // Step 1: Start the upload session (server-side, keeps API key secure)
+  const startResponse = await fetch('/api/upload/start', {
     method: 'POST',
-    headers: {
-      'Content-Length': file.size.toString(),
-      'X-Goog-Upload-Offset': '0',
-      'X-Goog-Upload-Command': 'upload, finalize',
-    },
-    body: fileBuffer,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fileName: file.name,
+      fileSize: file.size,
+      mimeType: file.type,
+    }),
   });
 
-  if (!uploadResponse.ok) {
-    const errorText = await uploadResponse.text();
-    console.error('Gemini upload error:', uploadResponse.status, errorText);
-    throw new Error(`Failed to upload file: ${uploadResponse.status}`);
+  if (!startResponse.ok) {
+    const errorData = await startResponse.json().catch(() => ({ error: 'Failed to start upload' }));
+    throw new Error(errorData.error || 'Failed to start upload');
   }
 
-  const fileInfo = await uploadResponse.json();
-  console.log('File uploaded successfully:', fileInfo.file?.uri);
+  const { uploadUrl } = await startResponse.json();
 
-  onProgress?.('Processing video...', 60);
+  onProgress?.('Uploading video...', 10);
+
+  // Step 2: Upload in chunks
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  let offset = 0;
+  let fileName = '';
+  let fileUri = '';
+  let mimeType = file.type;
+
+  for (let i = 0; i < totalChunks; i++) {
+    const isLast = i === totalChunks - 1;
+    const chunkEnd = Math.min(offset + CHUNK_SIZE, file.size);
+    const chunk = file.slice(offset, chunkEnd);
+
+    const formData = new FormData();
+    formData.append('uploadUrl', uploadUrl);
+    formData.append('chunk', chunk);
+    formData.append('offset', offset.toString());
+    formData.append('totalSize', file.size.toString());
+    formData.append('isLast', isLast.toString());
+
+    const chunkResponse = await fetch('/api/upload/chunk', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!chunkResponse.ok) {
+      const errorData = await chunkResponse.json().catch(() => ({ error: 'Chunk upload failed' }));
+      throw new Error(errorData.error || 'Chunk upload failed');
+    }
+
+    const chunkResult = await chunkResponse.json();
+
+    if (chunkResult.complete) {
+      fileName = chunkResult.fileName;
+      fileUri = chunkResult.fileUri;
+      mimeType = chunkResult.mimeType || file.type;
+    }
+
+    offset = chunkEnd;
+    const uploadProgress = 10 + Math.round((offset / file.size) * 40);
+    onProgress?.('Uploading video...', uploadProgress);
+  }
+
+  onProgress?.('Processing video...', 55);
 
   // Step 3: Wait for file to be processed (state = ACTIVE)
-  const fileName = fileInfo.file?.name;
-  if (!fileName) {
-    throw new Error('No file name returned from upload');
-  }
-
-  // Poll until file is active (max 60 seconds)
-  let fileState = fileInfo.file?.state;
+  let state = 'PROCESSING';
   let attempts = 0;
-  while (fileState === 'PROCESSING' && attempts < 60) {
+  while (state === 'PROCESSING' && attempts < 60) {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const statusResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/${fileName}?key=${GEMINI_API_KEY}`
-    );
+    const statusResponse = await fetch('/api/upload/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileName }),
+    });
 
     if (statusResponse.ok) {
       const statusData = await statusResponse.json();
-      fileState = statusData.state;
-      console.log('File state:', fileState, 'attempt:', attempts + 1);
-      onProgress?.('Processing video...', 60 + Math.min(attempts, 30));
+      state = statusData.state;
+      fileUri = statusData.fileUri || fileUri;
+      mimeType = statusData.mimeType || mimeType;
+      console.log('File state:', state, 'attempt:', attempts + 1);
+      onProgress?.('Processing video...', 55 + Math.min(attempts, 15));
     }
     attempts++;
   }
 
-  if (fileState !== 'ACTIVE') {
-    throw new Error(`File processing failed or timed out. State: ${fileState}`);
+  if (state !== 'ACTIVE') {
+    throw new Error(`File processing failed or timed out. State: ${state}`);
   }
 
-  return {
-    fileUri: fileInfo.file?.uri,
-    mimeType: fileInfo.file?.mimeType || file.type,
-  };
+  return { fileUri, mimeType };
 };
 
 export const analyzeVideo = async (
