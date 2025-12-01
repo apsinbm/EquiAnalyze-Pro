@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const maxDuration = 60;
+
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 export async function POST(req: NextRequest) {
@@ -13,7 +15,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { videoData, mimeType } = await req.json();
+    const body = await req.json();
+    const { videoData, mimeType } = body;
+
+    const bodySizeMB = (JSON.stringify(body).length / 1024 / 1024).toFixed(2);
+    console.log('Request body size:', bodySizeMB, 'MB');
 
     if (!videoData || !mimeType) {
       return NextResponse.json(
@@ -115,7 +121,13 @@ Score each phase 1-10. Be specific about timing in seconds.`;
     return NextResponse.json(result);
   } catch (error) {
     console.error('Analysis error:', error);
-    const message = error instanceof Error ? error.message : 'Analysis failed';
+    let message = 'Analysis failed';
+    if (error instanceof Error) {
+      message = error.message;
+      if (error.message.includes('body exceeded') || error.message.includes('FUNCTION_PAYLOAD_TOO_LARGE')) {
+        message = 'Video file too large. Please compress further or use a shorter clip.';
+      }
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
