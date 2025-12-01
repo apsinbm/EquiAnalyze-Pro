@@ -6,7 +6,7 @@ import { VideoInput } from '@/components/VideoInput';
 import { AnalysisView } from '@/components/AnalysisView';
 import { CompressionProgress } from '@/components/CompressionProgress';
 import { AnalysisProgress } from '@/components/AnalysisProgress';
-import { analyzeVideo, fileToBase64 } from '@/lib/analysisService';
+import { analyzeVideo, uploadToGemini } from '@/lib/analysisService';
 import { compressVideo, getCompressionStats } from '@/lib/videoCompressor';
 import type { CompressionProgress as CompressionProgressType } from '@/lib/videoCompressor';
 import type { AnalysisResult, AppState, ComparisonImage } from '@/types';
@@ -65,15 +65,18 @@ export default function HomePage() {
       const url = URL.createObjectURL(videoFile);
       setVideoUrl(url);
 
-      // Step 2: Analyze video
+      // Step 2: Upload to Gemini
       setAppState(AppStateEnum.ANALYZING);
-      setAnalysisProgress({ percent: 10, message: 'Uploading video...' });
+      setAnalysisProgress({ percent: 5, message: 'Uploading video...' });
 
-      const base64Data = await fileToBase64(videoFile);
-      setAnalysisProgress({ percent: 30, message: 'Analyzing video with AI...' });
+      const { fileUri, mimeType } = await uploadToGemini(videoFile, (stage, progress) => {
+        setAnalysisProgress({ percent: Math.min(progress, 70), message: stage });
+      });
 
-      const result = await analyzeVideo(base64Data, videoFile.type);
-      setAnalysisProgress({ percent: 90, message: 'Processing results...' });
+      // Step 3: Analyze video
+      setAnalysisProgress({ percent: 75, message: 'Analyzing video with AI...' });
+      const result = await analyzeVideo(fileUri, mimeType);
+      setAnalysisProgress({ percent: 95, message: 'Processing results...' });
 
       setAnalysisResult(result);
       setComparisonImages([]);

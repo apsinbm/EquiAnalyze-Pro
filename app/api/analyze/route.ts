@@ -4,31 +4,7 @@ export const maxDuration = 60;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-export async function POST(req: NextRequest) {
-  try {
-    console.log('API Key (first 10 chars):', GEMINI_API_KEY?.substring(0, 10));
-
-    if (!GEMINI_API_KEY) {
-      return NextResponse.json(
-        { error: 'GEMINI_API_KEY not configured' },
-        { status: 500 }
-      );
-    }
-
-    const body = await req.json();
-    const { videoData, mimeType } = body;
-
-    const bodySizeMB = (JSON.stringify(body).length / 1024 / 1024).toFixed(2);
-    console.log('Request body size:', bodySizeMB, 'MB');
-
-    if (!videoData || !mimeType) {
-      return NextResponse.json(
-        { error: 'videoData and mimeType are required' },
-        { status: 400 }
-      );
-    }
-
-    const prompt = `You are an expert equestrian biomechanics analyst specializing in show jumping.
+const ANALYSIS_PROMPT = `You are an expert equestrian biomechanics analyst specializing in show jumping.
 
 Analyze this video and detect ALL jumps present. For each jump, break it down into phases and provide detailed analysis.
 
@@ -68,6 +44,27 @@ For each jump, include these phases as applicable:
 
 Score each phase 1-10. Be specific about timing in seconds.`;
 
+export async function POST(req: NextRequest) {
+  try {
+    if (!GEMINI_API_KEY) {
+      return NextResponse.json(
+        { error: 'GEMINI_API_KEY not configured' },
+        { status: 500 }
+      );
+    }
+
+    const body = await req.json();
+    const { fileUri, mimeType } = body;
+
+    if (!fileUri || !mimeType) {
+      return NextResponse.json(
+        { error: 'fileUri and mimeType are required' },
+        { status: 400 }
+      );
+    }
+
+    console.log('Analyzing file:', fileUri, mimeType);
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`,
       {
@@ -77,11 +74,11 @@ Score each phase 1-10. Be specific about timing in seconds.`;
           contents: [
             {
               parts: [
-                { text: prompt },
+                { text: ANALYSIS_PROMPT },
                 {
-                  inline_data: {
+                  file_data: {
                     mime_type: mimeType,
-                    data: videoData,
+                    file_uri: fileUri,
                   },
                 },
               ],
@@ -111,6 +108,7 @@ Score each phase 1-10. Be specific about timing in seconds.`;
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!text) {
+      console.error('No text in response:', JSON.stringify(data, null, 2));
       return NextResponse.json(
         { error: 'No response from Gemini' },
         { status: 500 }
@@ -121,13 +119,7 @@ Score each phase 1-10. Be specific about timing in seconds.`;
     return NextResponse.json(result);
   } catch (error) {
     console.error('Analysis error:', error);
-    let message = 'Analysis failed';
-    if (error instanceof Error) {
-      message = error.message;
-      if (error.message.includes('body exceeded') || error.message.includes('FUNCTION_PAYLOAD_TOO_LARGE')) {
-        message = 'Video file too large. Please compress further or use a shorter clip.';
-      }
-    }
+    const message = error instanceof Error ? error.message : 'Analysis failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
